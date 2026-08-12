@@ -232,12 +232,31 @@ a { color: inherit; }
 
 .game__art {
   position: relative;
+  margin: 0;
   border: var(--edge);
   box-shadow: var(--shadow);
   background: var(--paper);
   overflow: hidden;
 }
-.game__art > img:first-child { width: 100%; }
+.game__art > img:first-of-type { width: 100%; }
+
+.game__inset {
+  position: absolute;
+  right: 4%; bottom: 18%;
+  width: 30%;
+  border: var(--edge);
+  box-shadow: 4px 4px 0 rgba(22, 19, 15, .35);
+  transform: rotate(2deg);
+}
+
+.game__art figcaption {
+  padding: .7rem 1rem;
+  border-top: var(--edge);
+  background: var(--paper);
+  font-size: .78rem;
+  letter-spacing: .02em;
+  color: var(--ink-soft);
+}
 
 .game__art--dungeon { background: #2b2620; }
 .game__art--dungeon > img:first-child { opacity: .95; }
@@ -300,20 +319,22 @@ a { color: inherit; }
 .lede { font-size: 1.2rem; }
 
 .stats {
-  display: flex; flex-wrap: wrap;
-  gap: clamp(1.2rem, 4vw, 3rem);
-  margin-top: 2.4rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 2.4rem 0 0;
   padding-top: 1.8rem;
   border-top: var(--edge);
 }
-.stat b {
-  display: block;
-  font-size: clamp(1.9rem, 4.5vw, 2.7rem);
+.stat dt {
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  font-weight: 800;
   line-height: 1;
 }
-.stat span {
-  font-size: .74rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .1em;
+.stat dd {
+  margin: .35rem 0 0;
+  font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .09em;
   color: var(--ink-soft);
 }
 

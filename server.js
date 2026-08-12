@@ -31,6 +31,7 @@ app.use((_req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Saborosa Games running at http://localhost:${PORT}`);
+// Bind on all interfaces — Hostinger proxies to the app over the container network.
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Saborosa Games running on port ${PORT}`);
 });
