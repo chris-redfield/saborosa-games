@@ -83,7 +83,7 @@ a { color: inherit; }
   transform: rotate(-8deg);
 }
 
-.nav__links { display: flex; gap: clamp(.9rem, 2.4vw, 1.9rem); }
+.nav__links { display: flex; flex-wrap: wrap; gap: .5rem clamp(.9rem, 2.4vw, 1.9rem); }
 
 .nav__links a {
   text-decoration: none;
@@ -198,7 +198,27 @@ a { color: inherit; }
 .plane--2 { --r: 11deg; }
 .plane--3 { --r: 6deg; }
 
-@media (max-width: 860px) { .hero__planes { display: none; } }
+/* On narrow screens the planes can't float beside the text without landing on it,
+   so they reflow into a little squadron under the buttons instead of disappearing. */
+@media (max-width: 860px) {
+  .hero__inner { padding-bottom: clamp(1.6rem, 5vw, 2.5rem); }
+
+  .hero__planes {
+    position: static;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(.6rem, 4vw, 1.6rem);
+    padding: 0 1rem clamp(2.4rem, 8vw, 3.5rem);
+  }
+
+  .plane {
+    position: static;
+    width: clamp(56px, 18vw, 96px);
+    flex: none;
+  }
+  .plane--3 { width: clamp(46px, 15vw, 80px); }
+}
 
 /* ── Rules & sections ──────────────────────────────────────────── */
 
