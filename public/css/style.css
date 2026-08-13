@@ -331,6 +331,14 @@ a { color: inherit; }
   font-weight: 800;
   line-height: 1;
 }
+
+/* Stats whose value is a name rather than a number. */
+.stat--text dt {
+  font-size: clamp(1rem, 2.1vw, 1.3rem);
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
 .stat dd {
   margin: .35rem 0 0;
   font-size: .72rem; font-weight: 700;

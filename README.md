@@ -37,8 +37,8 @@ Images are optimized copies of real assets from `../saborosa`:
 | `band-doodles.jpg` | `assets/intro-bg.jpg` | Scrolling hero backdrop |
 | `island.jpg` | `assets/cor-saborosa-fundo-fim-island-01-combined.png` | Saborosa card |
 | `island-zones.jpg` | `assets/saborosa-fundo-base-V2.png` | Color-zone inset |
-| `dungeon-bg.jpg` | `assets-v2/saborosa-dungeon-fundo-novo.png` | Flying Dungeon card |
-| `plane-*.png` | `assets-v2/flying-dungeon/character-sheets/` | Floating planes, stickers |
+| `dungeon-bg.jpg` | `assets-v2/saborosa-dungeon-fundo-novo.png` | STILL LIFE card |
+| `plane-*.png` | `assets-v2/flying-dungeon/character-sheets/` | Floating planes, stickers (source dir still uses the old `flying-dungeon` name) |
 | `fruit-select.png` | `assets/fruit-select-04-low.png` | Studio section |
 
 Regenerate them by re-running the downscale step against the game repo if the source art changes.
