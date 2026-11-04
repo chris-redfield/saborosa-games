@@ -119,6 +119,29 @@ arrow keys. Notes worth keeping:
   **Re-deriving the whole pack to fix it instead makes every direction float** — that was
   tried.
 
+### On a phone
+
+There is no keyboard, so `walkers.js` builds a control pad — in JS, never in the markup, so
+a no-JS visitor is never shown a dead one. Tapping a character or the yard opens it.
+
+- **The thumb stick is the dependable one.** No permission, no HTTPS requirement, nothing to
+  deny. It is analogue: a half push walks at half speed (measured 41px vs 116px over 0.7s).
+- **The tilt is the better toy, and cannot be relied on.** It needs HTTPS, it needs a gesture
+  on iOS, and a single denial is sticky enough that the maze game this was modelled on
+  (`../maze-explorer2`) has to tell people to clear Safari's website data. So it is opt-in
+  behind the TILT button and the stick never goes away.
+- ⚠ **`tilt.live`, not just `tilt.on`.** Adding a `deviceorientation` listener succeeds on
+  plenty of devices that then never fire it — desktop Chrome, an Android phone with no gyro.
+  Letting that take priority would feed the walker a vector of 0,0 and silently kill the
+  stick. The tilt only takes over once a reading has actually arrived, and if none has after
+  1.6s it switches itself back off and says so.
+- ⚠ **A finger on the stick always outranks the tilt**, so the stick stays usable as an
+  override.
+- **Neutral is calibrated on the first reading**, rather than assuming a holding angle the
+  way the maze game's fixed `neutralBeta` does — so it centres on however you happen to be
+  holding the phone. `screen.orientation.angle` remaps the axes so "lean right" is always
+  screen-right.
+
 ### Through the floor
 
 Lean on the bottom edge of the page for `DIG_MS` (1.1s) and the character goes through it,
@@ -126,11 +149,53 @@ into the screen both BATIDÃO DE CÔCO and THE PARTY open on: a photographed com
 hand-drawn vermin crawling over it at ~9.5fps, SABOROSA across the middle. The fall is black
 with *"Não tem nada aqui embaixo"*; the landing answers *"Mentira."*
 
+⚠ **It will not accept a press until it has played, and that guard is in two parts.** You get
+here by *holding* a direction, and a held key auto-repeats — those repeats are fresh keydown
+events arriving while the screen fades in, so without the guard the egg opened and closed in
+the same breath and looked broken. `armed` waits for the animation; `released` waits for the
+key that dropped you to actually come up. If nothing was held on the way in — you tilted the
+phone, where there is no key and no finger — `released` starts true, or you would be stranded
+on the heap forever. This is the same guard BATIDÃO puts on its own label screen (`LABEL.armMs`,
+and its note that "a key still down from launching the game would blow through it before it
+had drawn twice"). The exit hint is tied to `.is-armed` so it never offers a way out early.
+
 The heap is `heap-{1,2,3}.webp` + `saborosa-logo.webp`, repacked from
 `../saborosa/assets-v2/flying-dungeon/` (`CONFIG.VERMIN_FRAMES` and `CONFIG.LOGO.SHEET` in
 the beat 'em up). That is **424 KB, and it is fetched inside `fallThrough()` and nowhere
 else** — an ordinary visit never requests a byte of it. Any key or a click climbs back out,
 and the whole cast is sent home afterwards so nobody is left at the bottom of the page.
+
+## Dependencies and the `qs` override
+
+`express` is the only direct dependency. Everything else is transitive, which is where
+Hostinger's scanner finds things.
+
+**`package.json` carries an `overrides` block pinning `qs` to `6.16.2`, and it has to stay
+there.** In November 2026 Hostinger flagged three packages, all of them Express's:
+
+| package | was | now | |
+|---|---|---|---|
+| `proxy-addr` | 2.0.7 | **2.0.8** | critical — IP spoofing via IPv4-mapped IPv6 trust subnet |
+| `body-parser` | 1.20.6 | **1.20.9** | high — DoS via trailing bytes after a compressed body |
+| `qs` | 6.15.3 | **6.16.2** | moderate/low — three advisories, all fixed in 6.16.1 |
+
+`npm audit fix` resolved the first two on its own. It **could not fix `qs`**, and this is the
+part worth remembering: **express 4.22.2 — the latest 4.x — pins `qs` to `~6.15.1`, so it can
+never reach the 6.16.1 where those advisories are fixed.** `npm audit fix` therefore reports
+it as only fixable by moving to Express 5, which is a major upgrade this site does not need.
+The override forces the patched `qs` while staying on Express 4.
+
+`6.16.2` specifically, rather than the newest `6.17.x`: it is at or above 6.16.1 where all
+three advisories are fixed, *and* still inside `body-parser`'s own `~6.16.0` range, so the
+only constraint being overridden is express's stale pin.
+
+Verified after the bump: the server boots, static files and `/healthz` serve, 404s still 404,
+query parsing works (plain, nested `a[b][c]`, array and comma forms — `qs` is what parses
+those), and `/api/subscribe` accepts a valid address, rejects a bad one, rejects malformed
+JSON with a 400, and still handles a **gzipped** body, which is the case the `body-parser`
+advisory was about.
+
+Re-check with `npm audit`. It should report **0 vulnerabilities**.
 
 ## Deploy to Hostinger
 

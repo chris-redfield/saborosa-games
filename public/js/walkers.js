@@ -394,8 +394,6 @@
       '<div class="deep__heap"></div>' +
       '<div class="deep__faller"><span class="deep__fruit"></span></div>' +
       '<img class="deep__logo" src="/img/saborosa-logo.webp" alt="" width="705" height="166">' +
-      '<p class="deep__line deep__line--void">Não tem nada aqui embaixo</p>' +
-      '<p class="deep__line deep__line--land">Mentira.</p>' +
       '<p class="deep__exit">any key to climb back out</p>';
     document.body.appendChild(deep);
 
@@ -428,7 +426,7 @@
         f = (f + 1) % HEAP.length;
         heap.style.backgroundImage = 'url("' + HEAP[f] + '")';
       }, CRAWL_MS);
-      // after the heap is up and "Mentira." has landed on top of it
+      // after the heap is up and he has finished flopping over on it
       setTimeout(function () {
         armed = true;
         if (deep) deep.classList.add('is-armed');   // the hint appears with it
