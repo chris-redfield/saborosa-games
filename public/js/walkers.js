@@ -30,6 +30,44 @@
   // Must match tools/pack-walkers.py's output. It prints these when it runs.
   var CELL = { w: 110, h: 128 };
 
+  // ── the confirm punch ───────────────────────────────────────────
+  // Lifted from BATIDÃO DE CÔCO's menu, which lifted it from the main game's
+  // character select: a stamp pop settling to 1.0 on an easeOutBack over
+  // 400ms, plus a shake that decays linearly over 180ms. The frequencies are
+  // rad/sec, so the clock that feeds them is in SECONDS, exactly as in
+  // title.js.
+  //
+  // ⚠ THE TWO AMPLITUDES ARE HALVED AGAINST THE GAME, DELIBERATELY. The game
+  // uses pop 0.25 (a 1.25 stamp) and shakeAmp 9; on the website that read as
+  // too strong, so both are at half. The TIMINGS are untouched, because they
+  // are what makes it feel like the same move rather than a different one:
+  // change these two numbers to re-tune the force, not stampMs/shakeMs.
+  //
+  // ⚠ It shakes the CHARACTER, not the page. That is the same rule the game
+  // states for itself ("it shakes the panel, not the photograph") and here it
+  // matters twice over: jolting the whole document would be unbearable and
+  // would fight the scroll.
+  //
+  // ⚠ It fires on the CHOICE, not on arrival. The game is explicit that a
+  // punch answers a commitment and "spent on every nudge of the d-pad it
+  // cheapens itself", so the initial select on page load does not punch.
+  var PUNCH = { stampMs: 400, pop: 0.125, shakeAmp: 4.5, shakeMs: 180, freqX: 82, freqY: 71 };
+
+  function easeOutBack(p) {
+    var c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
+  }
+  function stampK(t) {
+    if (t < 0 || t > PUNCH.stampMs) return 1;
+    return 1 + PUNCH.pop * (1 - easeOutBack(Math.min(1, t / PUNCH.stampMs)));
+  }
+  function shakeOf(t) {
+    var amp = PUNCH.shakeAmp * Math.max(0, 1 - t / PUNCH.shakeMs);
+    if (amp <= 0.01) return null;
+    var ts = t / 1000;                     // seconds: the freqs are rad/sec
+    return { x: Math.sin(ts * PUNCH.freqX) * amp, y: Math.cos(ts * PUNCH.freqY) * amp };
+  }
+
   var DIG_MS = 1100;    // how long you must lean on the bottom edge to fall through
   var SPEED = 165;      // px per second
   var BOB_LIFT = 9;     // px at the top of a hop
@@ -179,6 +217,9 @@
 
   function draw(c) {
     var lift = 0, sx = 1, sy = 1, shade = 1;
+    var pt = c.punchT ? (performance.now() - c.punchT) : -1;
+    var k = pt >= 0 ? stampK(pt) : 1;
+    var sh = pt >= 0 ? shakeOf(pt) : null;
     if (bob && c.moving) {
       var s = Math.abs(Math.sin(c.phase));
       lift = s * BOB_LIFT;
@@ -190,11 +231,12 @@
     var sink = (SINK[c.i] && SINK[c.i][c.dir]) || 0;   // see SINK above
     c.body.style.backgroundPosition = (-f[0] * CELL.w) + 'px ' + (-c.i * CELL.h) + 'px';
     c.body.style.transform =
-      'translateY(' + (sink - lift).toFixed(2) + 'px) scaleX(' + ((f[1] ? -1 : 1) * sx).toFixed(3) +
-      ') scaleY(' + sy.toFixed(3) + ')';
+      'translateY(' + (sink - lift).toFixed(2) + 'px) scaleX(' + ((f[1] ? -1 : 1) * sx * k).toFixed(3) +
+      ') scaleY(' + (sy * k).toFixed(3) + ')';
     c.shadow.style.transform = 'scale(' + shade.toFixed(3) + ')';
     c.el.style.transform =
-      'translate3d(' + (c.x - CELL.w / 2).toFixed(1) + 'px,' + (c.y - CELL.h).toFixed(1) + 'px,0)';
+      'translate3d(' + (c.x - CELL.w / 2 + (sh ? sh.x : 0)).toFixed(1) + 'px,' +
+      (c.y - CELL.h + (sh ? sh.y : 0)).toFixed(1) + 'px,0)';
     c.el.style.zIndex = String(100 + Math.round(c.y));  // further down = in front
   }
 
@@ -274,6 +316,25 @@
     return OCTANT[((k % 8) + 8) % 8];
   }
 
+  var punching = false;
+  function punch(c) {
+    c.punchT = performance.now();
+    if (punching) return;
+    punching = true;
+    (function tick() {
+      var live = false;
+      cast.forEach(function (w) {
+        if (!w.punchT) return;
+        var t = performance.now() - w.punchT;
+        if (t > Math.max(PUNCH.stampMs, PUNCH.shakeMs)) { w.punchT = 0; }
+        else live = true;
+        draw(w);              // idempotent, so overlapping with step() is fine
+      });
+      if (live) requestAnimationFrame(tick);
+      else punching = false;
+    })();
+  }
+
   function start() {
     if (running) return;
     running = true;
@@ -300,7 +361,7 @@
   stage.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { stage.blur(); return; }       // always a way out
     if (e.key >= '1' && e.key <= String(cast.length)) {
-      select(+e.key - 1);
+      select(+e.key - 1, true);
       e.preventDefault();
       return;
     }
@@ -322,7 +383,12 @@
   stage.addEventListener('focus', function () { stage.classList.add('is-live'); });
   stage.addEventListener('blur', function () { stage.classList.remove('is-live'); });
 
-  function select(i) {
+  // `chosen` is what separates a commitment from a cursor move. Page load
+  // calls select() without it and nothing punches; every user action passes it,
+  // including re-picking the character that is already active, because a press
+  // that produced no feedback reads as a press that did not register.
+  function select(i, chosen) {
+    if (chosen) punch(cast[i]);
     if (i === active) return;
     cast[active].moving = false;
     draw(cast[active]);
@@ -345,7 +411,7 @@
       // handler, so it would undo the focus() below and clicking a character
       // would select it but leave the arrow keys dead.
       e.preventDefault();
-      select(i);
+      select(i, true);
       // preventScroll matters once they can leave the yard: a plain focus()
       // would jump the page back to the yard the moment you click a character
       // standing somewhere else entirely.
@@ -585,7 +651,7 @@
       if (!b) return;
       var act = b.dataset.act;
       if (act === 'close') closePad();
-      else if (act === 'next') select((active + 1) % cast.length);
+      else if (act === 'next') select((active + 1) % cast.length, true);
       else if (act === 'tilt') toggleTilt(b);
     });
     return pad;
@@ -657,7 +723,7 @@
     setTimeout(function () {
       if (tilt.on && !tilt.live) {
         stopTilt(btn);
-        note('No tilt readings from this device — use the stick.');
+        note('No tilt readings from this device, so use the stick.');
       }
     }, 1600);
   }
@@ -675,7 +741,7 @@
   function toggleTilt(btn) {
     if (tilt.on) { stopTilt(btn); note('Back to the stick.'); return; }
     if (typeof DeviceOrientationEvent === 'undefined') {
-      note('This device has no tilt sensor — use the stick.');
+      note('This device has no tilt sensor, so use the stick.');
       return;
     }
     // ⚠ iOS 13+ only grants this from inside the gesture, so request it
@@ -686,7 +752,7 @@
         else note('Tilt was refused, so the stick it is.');
       }).catch(function () {
         // thrown when the page is not on HTTPS, among other things
-        note('Tilt needs a secure (https) page — use the stick.');
+        note('Tilt needs a secure (https) page. Use the stick instead.');
       });
       return;
     }

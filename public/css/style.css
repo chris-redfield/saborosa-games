@@ -564,10 +564,6 @@ a { color: inherit; }
   .yard__body { transition: none; }
 }
 
-/* THE PARTY's inset is the only place the running game is visible on that
-   card, and the BSP street layout is the point of it — a little larger than
-   the default inset so the blocks and junctions actually read. */
-.game__inset--city { width: 38%; bottom: 12%; right: 3%; transform: rotate(-1.5deg); }
 
 /* ── The page-wide layer the cast walks on ─────────────────────── */
 

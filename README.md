@@ -45,7 +45,7 @@ Images are optimized copies of real assets from `../saborosa`:
 | `fruit-select.png` | `assets/fruit-select-04-low.png` | Studio section |
 | `batidao-*.jpg` | captured from `../saborosa/beatemup-dungeon` | BATIDÃO DE CÔCO card (7 shots: `bookcase` is the hero image, `street`/`desert`/`title` the strip) |
 | `party-poster.jpg` | `../the-party/design/prty-poster.jpg` | THE PARTY card |
-| `party-city.jpg` | `../the-party/desktop/selftest.png` | THE PARTY card inset — the BSP city |
+| `party-city.jpg` | `../the-party/desktop/selftest.png` | **Currently unused.** It was THE PARTY card's inset, removed because it covered the poster's SABOROSA logo. Kept in case a screenshot is wanted elsewhere; safe to delete. |
 | `saborosa-walkers.png` | `../saborosa/assets/saborosa-elementos-{tomato,eggplant,laranja}-game.png` | The yard. Built by `tools/pack-walkers.py` |
 
 Regenerate them by re-running the downscale step against the game repo if the source art changes.
@@ -212,6 +212,19 @@ In hPanel → **Websites → Node.js app**:
 
 The app reads `process.env.PORT` and binds `0.0.0.0`, which is what Hostinger's proxy expects.
 Don't hardcode a port. `GET /healthz` returns `ok` for uptime checks.
+
+## House style for copy
+
+**No em dashes (—) or en dashes (–) in anything a visitor reads.** They read as
+machine-written and Christian does not want them on the site. Rewrite the sentence instead:
+a colon, a full stop, or "and"/"so" almost always does the job better. Ordinary hyphens
+inside compound words are fine and expected (`hand-drawn`, `beat 'em up`, `trick-or-treaters`)
+— removing those would just produce broken English. This applies to `index.html`, `404.html`
+and any user-visible string in `js/`, including the tilt pad's status messages.
+
+**Everything on itch.io is an early access demo**, so the copy says so: the cards are tagged
+`Demo out now`, the buttons read `Play the demo`, and the games section header states it once
+in plain words. Do not describe any of them as finished or as a full release.
 
 ## Still mocked up
 
