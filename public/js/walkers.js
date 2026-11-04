@@ -386,8 +386,6 @@
     var heldAtEntry = stick.on || Object.keys(keys).some(function (k) { return keys[k]; });
     stop();
 
-    HEAP.forEach(function (src) { var im = new Image(); im.src = src; });
-
     deep = document.createElement('div');
     deep.className = 'deep is-void';
     deep.innerHTML =
@@ -396,6 +394,37 @@
       '<img class="deep__logo" src="/img/saborosa-logo.webp" alt="" width="705" height="166">' +
       '<p class="deep__exit">any key to climb back out</p>';
     document.body.appendChild(deep);
+
+    // ⚠ THE HEAP IS A FLIP-BOOK OF THREE LAYERS, NOT ONE SWAPPED URL, and both
+    // halves of that matter. Swapping `background-image` every 105ms made iOS
+    // Safari resolve and decode a 1200x674 WebP at paint time; when the decode
+    // was not finished it painted the element's dark base instead, so the heap
+    // strobed photo-black-photo at 9.5fps. It only did it COLD — once the
+    // images were cached and decoded a retry looked perfect — which is exactly
+    // what a decode race looks like, and it means a first-time visitor gets
+    // the broken version and nobody else does.
+    //
+    // So: all three frames go in the DOM as real <img> layers, every one of
+    // them is DECODED before the crawl starts (decoded, not merely fetched —
+    // the same lesson THE PARTY's label screen is built around), and the
+    // animation is then nothing but flipping opacity between layers that are
+    // already on the GPU. Nothing is resolved or decoded at paint time.
+    //
+    // The old preload was worse than useless: `var im = new Image()` inside a
+    // forEach keeps NO reference, so the images were collectable the moment
+    // the loop ended, and it only ever started a fetch anyway.
+    var heapEl = deep.querySelector('.deep__heap');
+    var frames = HEAP.map(function (src) {
+      var im = new Image();
+      im.className = 'deep__frame';
+      im.alt = '';
+      im.src = src;
+      heapEl.appendChild(im);     // appended, so it is referenced and retained
+      return im;
+    });
+    var decoded = Promise.all(frames.map(function (im) {
+      return im.decode ? im.decode().catch(function () {}) : Promise.resolve();
+    }));
 
     // the fruit that fell is the one you were walking
     var fr = deep.querySelector('.deep__fruit');
@@ -420,12 +449,19 @@
     var land = function () {
       deep.classList.remove('is-void');
       deep.classList.add('is-landed');
-      var f = 0, heap = deep.querySelector('.deep__heap');
-      heap.style.backgroundImage = 'url("' + HEAP[0] + '")';
-      crawl = setInterval(function () {
-        f = (f + 1) % HEAP.length;
-        heap.style.backgroundImage = 'url("' + HEAP[f] + '")';
-      }, CRAWL_MS);
+      var f = 0;
+      frames[0].classList.add('is-on');
+      // Only start flipping once every frame is decoded. They have had the
+      // whole fall (1.7s) to get there, so this almost never actually waits.
+      decoded.then(function () {
+        if (!deep) return;                       // climbed out while we waited
+        crawl = setInterval(function () {
+          var next = (f + 1) % frames.length;
+          frames[next].classList.add('is-on');
+          frames[f].classList.remove('is-on');
+          f = next;
+        }, CRAWL_MS);
+      });
       // after the heap is up and he has finished flopping over on it
       setTimeout(function () {
         armed = true;

@@ -622,11 +622,24 @@ a { color: inherit; }
 
 .deep__heap {
   position: absolute; inset: 0;
-  background: #07060a center/cover no-repeat;
+  background: #07060a;
   opacity: 0;
   transition: opacity .5s ease;
 }
 .deep.is-landed .deep__heap { opacity: 1; }
+
+/* The three heap frames are stacked <img> layers, all decoded before the crawl
+   starts, and the animation only flips which one is opaque. Deliberately NO
+   transition here — it is a flip-book, not a cross-fade — and deliberately not
+   a swapped background-image, which made iOS Safari decode at paint time and
+   strobe through to the dark base behind it. */
+.deep__frame {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+.deep__frame.is-on { opacity: 1; }
 
 /* the fall: in from above, tumbling, then a squash on the heap */
 .deep__faller {
