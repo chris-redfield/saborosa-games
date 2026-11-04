@@ -22,7 +22,10 @@ public/
   404.html
   css/style.css      Hand-drawn ink & kraft design system (CSS variables at the top)
   js/main.js         Signup form handling, footer year
-  img/               Art pulled from the game repo, downscaled for web
+  js/walkers.js      The yard — walk TOM, ERKPA and JUIXY around the page
+  img/               Art pulled from the game repos, downscaled for web
+tools/
+  pack-walkers.py    Rebuilds the character strip from the game's own sheets
 ```
 
 No build step, no bundler, no framework — edit the files and reload.
@@ -40,8 +43,94 @@ Images are optimized copies of real assets from `../saborosa`:
 | `dungeon-bg.jpg` | `assets-v2/saborosa-dungeon-fundo-novo.png` | STILL LIFE card |
 | `plane-*.png` | `assets-v2/flying-dungeon/character-sheets/` | Floating planes, stickers (source dir still uses the old `flying-dungeon` name) |
 | `fruit-select.png` | `assets/fruit-select-04-low.png` | Studio section |
+| `batidao-*.jpg` | captured from `../saborosa/beatemup-dungeon` | BATIDÃO DE CÔCO card (7 shots: `bookcase` is the hero image, `street`/`desert`/`title` the strip) |
+| `party-poster.jpg` | `../the-party/design/prty-poster.jpg` | THE PARTY card |
+| `party-city.jpg` | `../the-party/desktop/selftest.png` | THE PARTY card inset — the BSP city |
+| `saborosa-walkers.png` | `../saborosa/assets/saborosa-elementos-{tomato,eggplant,laranja}-game.png` | The yard. Built by `tools/pack-walkers.py` |
 
 Regenerate them by re-running the downscale step against the game repo if the source art changes.
+
+### The character strip
+
+`public/img/saborosa-walkers.png` is **not** a copy of a game asset — it is repacked from
+three of them by `tools/pack-walkers.py`:
+
+```bash
+python3 tools/pack-walkers.py            # idle only (what ships): 28 KB
+python3 tools/pack-walkers.py --throw    # idle + the charged throw: 173 KB
+```
+
+The three masters are **1.35 MB together, more than this entire img folder**, and 40 of the
+45 frames in each are poses the site does not use. The script pulls column 0 — the idle
+pose — in all five drawn directions, and writes one 110×128 grid, 15 cells, 28 KB.
+
+Two things it handles that are easy to get wrong, both of which it bakes in so the browser
+needs no alignment code at all:
+
+- **Frames are tightly cropped and do not share a baseline.** It aligns on the body
+  *centroid*, the way the game's own `src/entities/spritesheet.js` does, because in a throw
+  pose an outstretched arm is the lowest pixel and bottom-aligning would shove the fruit
+  upward. It then drops each character by its own centroid→feet distance so all three stand
+  on one ground line. Nothing is ever rescaled to even it out — one scale per pack.
+- **ERKPA's body is `(200,187,155)`, a tan** — not a purple, and within 2/255 of this site's
+  `--kraft` background. That is why the yard's floor is `--paper`: on kraft he is a black
+  outline around a hole. His body-colour test is the `tan` one in the script.
+
+If the cell size changes (it does with `--throw`), the script prints the constants to paste
+into the top of `public/js/walkers.js`.
+
+### The yard
+
+`walkers.js` turns the three standing drawings into characters you can walk around with the
+arrow keys. Notes worth keeping:
+
+- **There is no walk cycle anywhere in the project.** The game itself reuses the idle frame
+  while moving. So the page offers both readings and lets you compare: *bobbing* fakes the
+  missing animation out of the one frame (hop, stretch, squash, shrinking shadow), *sliding*
+  is the raw truth and reads like a bug.
+- **The cast is authored inside the yard and moved out of it on startup**, into a full-page
+  `.yard-overlay`. That is what lets them leave the box. With JavaScript off they simply
+  stay put in the yard, which is a fine thing for three drawings to do.
+- **The overlay is a `div` with `pointer-events: none`, deliberately not a canvas.** It spans
+  the whole document, so a canvas there would swallow every click, link and text selection
+  on the site. Each fruit sets `pointer-events: auto` back on itself. The page underneath is
+  completely unaffected — verified by hit-testing body text and a CTA link through it.
+- ⚠ **`scroll-behavior: smooth` on `<html>` breaks per-frame scrolling.** Walking off the
+  bottom of the window scrolls the page to follow, and a `scrollTo` issued every frame
+  restarts the smooth animation every frame — the two cancel and the page does not move at
+  all. `jump()` turns it off around that one call only, so the nav's smooth links still work.
+- It never listens on `document`, only on the yard, so it cannot hijack scrolling or trap the
+  keyboard. `Esc` hands focus back.
+- ⚠ **Clicking a character must `preventDefault()` on `pointerdown`.** `mousedown`'s own
+  default action moves focus — to the body, since a `<span>` is not focusable — and it runs
+  *after* the handler, so without it clicking a character selects it but leaves the arrow
+  keys dead.
+- **The name tags are lifted out of the characters on startup** and pinned to the spot each
+  one began on, so they read as labels on the ground instead of being dragged around.
+- ⚠ **`.yard__hint` has to stay below z-index 40.** It was 9000, and since `.yard` sets no
+  z-index of its own that number competes in the *root* stacking context — putting a caption
+  on top of the sticky header and on top of the cast.
+- ⚠ **The three up-facing poses float above their shadow, and the fix is `SINK` in
+  `walkers.js`, not the pack.** The fruit is drawn from behind in those frames, so its body
+  sits at a different height inside its crop box and one per-character alignment cannot place
+  the face-on and the away-facing groups at once. Measured against each character's own
+  face-on poses, the up frames were 5.8–7.8px high and the up-diagonals 3.3–6.3px. `SINK`
+  pushes exactly those back down at draw time and leaves every other direction untouched.
+  **Re-deriving the whole pack to fix it instead makes every direction float** — that was
+  tried.
+
+### Through the floor
+
+Lean on the bottom edge of the page for `DIG_MS` (1.1s) and the character goes through it,
+into the screen both BATIDÃO DE CÔCO and THE PARTY open on: a photographed compost heap with
+hand-drawn vermin crawling over it at ~9.5fps, SABOROSA across the middle. The fall is black
+with *"Não tem nada aqui embaixo"*; the landing answers *"Mentira."*
+
+The heap is `heap-{1,2,3}.webp` + `saborosa-logo.webp`, repacked from
+`../saborosa/assets-v2/flying-dungeon/` (`CONFIG.VERMIN_FRAMES` and `CONFIG.LOGO.SHEET` in
+the beat 'em up). That is **424 KB, and it is fetched inside `fallThrough()` and nowhere
+else** — an ordinary visit never requests a byte of it. Any key or a click climbs back out,
+and the whole cast is sent home afterwards so nobody is left at the bottom of the page.
 
 ## Deploy to Hostinger
 
@@ -61,9 +150,10 @@ Don't hardcode a port. `GET /healthz` returns `ok` for uptime checks.
 
 ## Still mocked up
 
-- Devlog posts are placeholder cards linking to `#` — no CMS or post pages yet.
-- Store links ("Wishlist soon", "Play on itch.io") point at `#contact`; swap in real URLs.
-- Footer social links are placeholders.
+- Devlog posts are placeholder cards linking to `#` — no CMS or post pages yet, and the
+  three posts still only mention SABOROSA Sports and STILL LIFE.
+- Footer social links for Bluesky, YouTube and Discord are still `#` — the itch.io profile
+  lists no socials, so there were no real URLs to put in. The itch.io link is real.
 - `POST /api/subscribe` validates the address and logs it to stdout. It does **not**
   persist or send anything — wire it to Mailchimp/Buttondown/a database before launch.
 - `hello@saborosa.games` is invented copy; replace with the real inbox.
